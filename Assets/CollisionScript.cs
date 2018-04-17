@@ -5,7 +5,7 @@ using VRTK;
 
 public class CollisionScript : MonoBehaviour {
     public AudioSource collisionSound;
-    
+       
 	// Use this for initialization
 	void Start () {
         collisionSound = GetComponent<AudioSource>();
@@ -18,10 +18,16 @@ public class CollisionScript : MonoBehaviour {
 
     private void OnCollisionEnter(Collision target)
     {
-        if (target.gameObject.tag.Equals("drum") == true)
+        if (target.gameObject.tag.Equals("drumstick") == true)
         {
             collisionSound.Play();
+                        
         }
+
+    }
+
+    private void OnCollisionExit(Collision target)
+    {
         
     }
 }

@@ -13,6 +13,8 @@ TagManager:
   - omnijack
   - UIpanel
   - drum
+  - TeleportIgnore
+  - drumstick
   layers:
   - Default
   - TransparentFX
