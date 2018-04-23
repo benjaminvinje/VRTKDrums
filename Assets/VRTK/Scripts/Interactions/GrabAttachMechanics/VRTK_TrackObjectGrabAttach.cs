@@ -89,7 +89,7 @@ namespace VRTK.GrabAttachMechanics
                 return;
             }
 
-            float maxDistanceDelta = 10f;
+            float maxDistanceDelta = 20f;
             Vector3 positionDelta = trackPoint.position - (grabbedSnapHandle != null ? grabbedSnapHandle.position : grabbedObject.transform.position);
             Quaternion rotationDelta = trackPoint.rotation * Quaternion.Inverse((grabbedSnapHandle != null ? grabbedSnapHandle.rotation : grabbedObject.transform.rotation));
 
