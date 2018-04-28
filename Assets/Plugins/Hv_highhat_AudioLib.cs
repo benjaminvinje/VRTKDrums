@@ -40,21 +40,21 @@ using AOT;
 #if UNITY_EDITOR
 using UnityEditor;
 
-[CustomEditor(typeof(Hv_test_AudioLib))]
-public class Hv_test_Editor : Editor {
+[CustomEditor(typeof(Hv_highhat_AudioLib))]
+public class Hv_highhat_Editor : Editor {
 
-  [MenuItem("Heavy/test")]
-  static void CreateHv_test() {
+  [MenuItem("Heavy/highhat")]
+  static void CreateHv_highhat() {
     GameObject target = Selection.activeGameObject;
     if (target != null) {
-      target.AddComponent<Hv_test_AudioLib>();
+      target.AddComponent<Hv_highhat_AudioLib>();
     }
   }
   
-  private Hv_test_AudioLib _dsp;
+  private Hv_highhat_AudioLib _dsp;
 
   private void OnEnable() {
-    _dsp = target as Hv_test_AudioLib;
+    _dsp = target as Hv_highhat_AudioLib;
   }
 
   public override void OnInspectorGUI() {
@@ -62,6 +62,14 @@ public class Hv_test_Editor : Editor {
     if (!isEnabled) {
       EditorGUILayout.LabelField("Press Play!",  EditorStyles.centeredGreyMiniLabel);
     }
+    // events
+    GUI.enabled = isEnabled;
+    EditorGUILayout.Space();
+    // bang
+    if (GUILayout.Button("bang")) {
+      _dsp.SendEvent(Hv_highhat_AudioLib.Event.Bang);
+    }
+    
     GUILayout.EndVertical();
 
     // parameters
@@ -70,12 +78,12 @@ public class Hv_test_Editor : Editor {
     EditorGUILayout.Space();
     EditorGUI.indentLevel++;
     
-    // wind
+    // hip
     GUILayout.BeginHorizontal();
-    float wind = _dsp.GetFloatParameter(Hv_test_AudioLib.Parameter.Wind);
-    float newWind = EditorGUILayout.Slider("wind", wind, 0.0f, 127.0f);
-    if (wind != newWind) {
-      _dsp.SetFloatParameter(Hv_test_AudioLib.Parameter.Wind, newWind);
+    float hip = _dsp.GetFloatParameter(Hv_highhat_AudioLib.Parameter.Hip);
+    float newHip = EditorGUILayout.Slider("hip", hip, 0.0f, 8000.0f);
+    if (hip != newHip) {
+      _dsp.SetFloatParameter(Hv_highhat_AudioLib.Parameter.Hip, newHip);
     }
     GUILayout.EndHorizontal();
     EditorGUI.indentLevel--;
@@ -84,32 +92,44 @@ public class Hv_test_Editor : Editor {
 #endif // UNITY_EDITOR
 
 [RequireComponent (typeof (AudioSource))]
-public class Hv_test_AudioLib : MonoBehaviour {
+public class Hv_highhat_AudioLib : MonoBehaviour {
+  
+  // Events are used to trigger bangs in the patch context (thread-safe).
+  // Example usage:
+  /*
+    void Start () {
+        Hv_highhat_AudioLib script = GetComponent<Hv_highhat_AudioLib>();
+        script.SendEvent(Hv_highhat_AudioLib.Event.Bang);
+    }
+  */
+  public enum Event : uint {
+    Bang = 0xFFFFFFFF,
+  }
   
   // Parameters are used to send float messages into the patch context (thread-safe).
   // Example usage:
   /*
     void Start () {
-        Hv_test_AudioLib script = GetComponent<Hv_test_AudioLib>();
+        Hv_highhat_AudioLib script = GetComponent<Hv_highhat_AudioLib>();
         // Get and set a parameter
-        float wind = script.GetFloatParameter(Hv_test_AudioLib.Parameter.Wind);
-        script.SetFloatParameter(Hv_test_AudioLib.Parameter.Wind, wind + 0.1f);
+        float hip = script.GetFloatParameter(Hv_highhat_AudioLib.Parameter.Hip);
+        script.SetFloatParameter(Hv_highhat_AudioLib.Parameter.Hip, hip + 0.1f);
     }
   */
   public enum Parameter : uint {
-    Wind = 0xAE05860F,
+    Hip = 0x474D7361,
   }
   
   // Delegate method for receiving float messages from the patch context (thread-safe).
   // Example usage:
   /*
     void Start () {
-        Hv_test_AudioLib script = GetComponent<Hv_test_AudioLib>();
+        Hv_highhat_AudioLib script = GetComponent<Hv_highhat_AudioLib>();
         script.RegisterSendHook();
         script.FloatReceivedCallback += OnFloatMessage;
     }
 
-    void OnFloatMessage(Hv_test_AudioLib.FloatMessage message) {
+    void OnFloatMessage(Hv_highhat_AudioLib.FloatMessage message) {
         Debug.Log(message.receiverName + ": " + message.value);
     }
   */
@@ -124,10 +144,10 @@ public class Hv_test_AudioLib : MonoBehaviour {
   }
   public delegate void FloatMessageReceived(FloatMessage message);
   public FloatMessageReceived FloatReceivedCallback;
-  public float wind = 40.0f;
+  public float hip = 4000.0f;
 
   // internal state
-  private Hv_test_Context _context;
+  private Hv_highhat_Context _context;
 
   public bool IsInstantiated() {
     return (_context != null);
@@ -137,21 +157,26 @@ public class Hv_test_AudioLib : MonoBehaviour {
     _context.RegisterSendHook();
   }
   
-  // see Hv_test_AudioLib.Parameter for definitions
-  public float GetFloatParameter(Hv_test_AudioLib.Parameter param) {
+  // see Hv_highhat_AudioLib.Event for definitions
+  public void SendEvent(Hv_highhat_AudioLib.Event e) {
+    if (IsInstantiated()) _context.SendBangToReceiver((uint) e);
+  }
+  
+  // see Hv_highhat_AudioLib.Parameter for definitions
+  public float GetFloatParameter(Hv_highhat_AudioLib.Parameter param) {
     switch (param) {
-      case Parameter.Wind: return wind;
+      case Parameter.Hip: return hip;
       default: return 0.0f;
     }
   }
 
-  public void SetFloatParameter(Hv_test_AudioLib.Parameter param, float x) {
+  public void SetFloatParameter(Hv_highhat_AudioLib.Parameter param, float x) {
     switch (param) {
-      case Parameter.Wind: {
-        x = Mathf.Clamp(x, 0.0f, 127.0f);
-        wind = x;
+      case Parameter.Hip: {
+        x = Mathf.Clamp(x, 0.0f, 8000.0f);
+        hip = x;
         break;
-                        }
+      }
       default: return;
     }
     if (IsInstantiated()) _context.SendFloatToReceiver((uint) param, x);
@@ -159,7 +184,7 @@ public class Hv_test_AudioLib : MonoBehaviour {
   
   public void FillTableWithMonoAudioClip(string tableName, AudioClip clip) {
     if (clip.channels > 1) {
-      Debug.LogWarning("Hv_test_AudioLib: Only loading first channel of '" +
+      Debug.LogWarning("Hv_highhat_AudioLib: Only loading first channel of '" +
           clip.name + "' into table '" +
           tableName + "'. Multi-channel files are not supported.");
     }
@@ -173,37 +198,22 @@ public class Hv_test_AudioLib : MonoBehaviour {
   }
 
   private void Awake() {
-    _context = new Hv_test_Context((double) AudioSettings.outputSampleRate);
+    _context = new Hv_highhat_Context((double) AudioSettings.outputSampleRate);
   }
   
   private void Start() {
-    _context.SendFloatToReceiver((uint) Parameter.Wind, wind);
+    _context.SendFloatToReceiver((uint) Parameter.Hip, hip);
   }
-
-    private void Update() {
-        // retreive sent messages
-        if (_context.IsSendHookRegistered()) {
-            Hv_test_AudioLib.FloatMessage tempMessage;
-            while ((tempMessage = _context.msgQueue.GetNextMessage()) != null) {
-                FloatReceivedCallback(tempMessage);
-            }
-        }
-
-        if (transform.rotation.x < 89)
-        {
-
-            wind = wind + 0.1f;
-            _context.SendFloatToReceiver((uint)Parameter.Wind, wind);
-            
-        }
-
-        if (transform.position.y > 2)
-        {
-             wind = 120;
-            _context.SendFloatToReceiver((uint)Parameter.Wind, wind);
-        }
-
+  
+  private void Update() {
+    // retreive sent messages
+    if (_context.IsSendHookRegistered()) {
+      Hv_highhat_AudioLib.FloatMessage tempMessage;
+      while ((tempMessage = _context.msgQueue.GetNextMessage()) != null) {
+        FloatReceivedCallback(tempMessage);
+      }
     }
+  }
 
   private void OnAudioFilterRead(float[] buffer, int numChannels) {
     Assert.AreEqual(numChannels, _context.GetNumOutputChannels()); // invalid channel configuration
@@ -211,27 +221,27 @@ public class Hv_test_AudioLib : MonoBehaviour {
   }
 }
 
-class Hv_test_Context {
+class Hv_highhat_Context {
 
 #if UNITY_IOS && !UNITY_EDITOR
   private const string _dllName = "__Internal";
 #else
-  private const string _dllName = "Hv_test_AudioLib";
+  private const string _dllName = "Hv_highhat_AudioLib";
 #endif
 
   // Thread-safe message queue
   public class SendMessageQueue {
     private readonly object _msgQueueSync = new object();
-    private readonly Queue<Hv_test_AudioLib.FloatMessage> _msgQueue = new Queue<Hv_test_AudioLib.FloatMessage>();
+    private readonly Queue<Hv_highhat_AudioLib.FloatMessage> _msgQueue = new Queue<Hv_highhat_AudioLib.FloatMessage>();
 
-    public Hv_test_AudioLib.FloatMessage GetNextMessage() {
+    public Hv_highhat_AudioLib.FloatMessage GetNextMessage() {
       lock (_msgQueueSync) {
         return (_msgQueue.Count != 0) ? _msgQueue.Dequeue() : null;
       }
     }
 
     public void AddMessage(string receiverName, float value) {
-      Hv_test_AudioLib.FloatMessage msg = new Hv_test_AudioLib.FloatMessage(receiverName, value);
+      Hv_highhat_AudioLib.FloatMessage msg = new Hv_highhat_AudioLib.FloatMessage(receiverName, value);
       lock (_msgQueueSync) {
         _msgQueue.Enqueue(msg);
       }
@@ -244,7 +254,7 @@ class Hv_test_Context {
   private SendHook _sendHook = null;
 
   [DllImport (_dllName)]
-  private static extern IntPtr hv_test_new_with_options(double sampleRate, int poolKb, int inQueueKb, int outQueueKb);
+  private static extern IntPtr hv_highhat_new_with_options(double sampleRate, int poolKb, int inQueueKb, int outQueueKb);
 
   [DllImport (_dllName)]
   private static extern int hv_processInlineInterleaved(IntPtr ctx,
@@ -305,14 +315,14 @@ class Hv_test_Context {
 
   private delegate void SendHook(IntPtr context, string sendName, uint sendHash, IntPtr message);
 
-  public Hv_test_Context(double sampleRate, int poolKb=10, int inQueueKb=2, int outQueueKb=2) {
+  public Hv_highhat_Context(double sampleRate, int poolKb=10, int inQueueKb=2, int outQueueKb=2) {
     gch = GCHandle.Alloc(msgQueue);
-    _context = hv_test_new_with_options(sampleRate, poolKb, inQueueKb, outQueueKb);
+    _context = hv_highhat_new_with_options(sampleRate, poolKb, inQueueKb, outQueueKb);
     hv_setPrintHook(_context, new PrintHook(OnPrint));
     hv_setUserData(_context, GCHandle.ToIntPtr(gch));
   }
 
-  ~Hv_test_Context() {
+  ~Hv_highhat_Context() {
     hv_delete(_context);
     GC.KeepAlive(_context);
     GC.KeepAlive(_sendHook);

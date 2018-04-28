@@ -21,7 +21,7 @@ public class CollisionScript : MonoBehaviour {
         if (target.gameObject.tag.Equals("drumstick") == true)
         {
             collisionSound.Play();
-                        
+                                    
         }
 
     }
